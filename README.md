@@ -2,6 +2,10 @@
 
 A SwiftUI library for rendering animated 3D spheres using Metal. Features smooth color transitions, physics-based collisions, and customizable appearance.
 
+<p align="center">
+  <img src="Simulator%20Screen%20Recording%20-%20iPhone%2017%20-%202026-02-04%20at%2015.00.45.gif" width="300" alt="SphereAnimation Demo">
+</p>
+
 ## Features
 
 - GPU-accelerated rendering with Metal
