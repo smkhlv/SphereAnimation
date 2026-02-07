@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		C19E32562F32D8E6008E13AE /* SphereAnimation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SphereAnimation.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C19E32562F32D8E6008E13AE /* SphereAnimationDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SphereAnimationDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,7 +40,7 @@
 		C19E32572F32D8E6008E13AE /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C19E32562F32D8E6008E13AE /* SphereAnimation.app */,
+				C19E32562F32D8E6008E13AE /* SphereAnimationDemo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		C19E32552F32D8E6008E13AE /* SphereAnimation */ = {
+		C19E32552F32D8E6008E13AE /* SphereAnimationDemo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C19E32612F32D8E8008E13AE /* Build configuration list for PBXNativeTarget "SphereAnimation" */;
+			buildConfigurationList = C19E32612F32D8E8008E13AE /* Build configuration list for PBXNativeTarget "SphereAnimationDemo" */;
 			buildPhases = (
 				C19E32522F32D8E6008E13AE /* Sources */,
 				C19E32532F32D8E6008E13AE /* Frameworks */,
@@ -63,11 +63,11 @@
 			fileSystemSynchronizedGroups = (
 				C19E32582F32D8E6008E13AE /* SphereAnimation */,
 			);
-			name = SphereAnimation;
+			name = SphereAnimationDemo;
 			packageProductDependencies = (
 				C19E32712F32D8E8008E13AE /* SphereAnimation */,
 			);
-			productName = SphereAnimation;
+			productName = SphereAnimationDemo;
 			productReference = C19E32562F32D8E6008E13AE /* SphereAnimation.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -271,7 +271,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = smkhlv.SphereAnimation;
+				PRODUCT_BUNDLE_IDENTIFIER = smkhlv.SphereAnimationDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -304,7 +304,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = smkhlv.SphereAnimation;
+				PRODUCT_BUNDLE_IDENTIFIER = smkhlv.SphereAnimationDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -328,7 +328,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C19E32612F32D8E8008E13AE /* Build configuration list for PBXNativeTarget "SphereAnimation" */ = {
+		C19E32612F32D8E8008E13AE /* Build configuration list for PBXNativeTarget "SphereAnimationDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C19E32622F32D8E8008E13AE /* Debug */,

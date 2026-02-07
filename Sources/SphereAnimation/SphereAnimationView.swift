@@ -59,12 +59,12 @@ public struct SphereAnimationView: View {
 
 extension SphereAnimationView {
     /// Preview helper for backward compatibility testing
-    static var singleSphere: SphereAnimationView {
+    public static var singleSphere: SphereAnimationView {
         SphereAnimationView(colors: [.blue, .purple, .pink, .orange])
     }
 
     /// Preview helper for multi-sphere
-    static var multiSphere: SphereAnimationView {
+    public static var multiSphere: SphereAnimationView {
         SphereAnimationView(spheres: [
             .small(colors: [.blue, .cyan]),
             .large(colors: [.purple, .pink]),
@@ -73,7 +73,7 @@ extension SphereAnimationView {
     }
 
     /// Preview helper for random spheres
-    static var randomSpheres: SphereAnimationView {
+    public static var randomSpheres: SphereAnimationView {
         SphereAnimationView(randomSpheres: 5, colors: [.blue, .purple, .pink, .orange])
     }
 }

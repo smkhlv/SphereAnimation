@@ -46,7 +46,7 @@ class MetalRenderer: NSObject, MTKViewDelegate {
     }
 
     private func setupPipeline() {
-        guard let library = device.makeDefaultLibrary() else {
+        guard let library = try? device.makeDefaultLibrary(bundle: Bundle.module) else {
             fatalError("Could not create Metal library")
         }
 
