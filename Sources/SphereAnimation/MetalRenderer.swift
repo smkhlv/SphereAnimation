@@ -8,7 +8,7 @@ import UIKit
 import AppKit
 #endif
 
-class MetalRenderer: NSObject, MTKViewDelegate {
+public class MetalRenderer: NSObject, MTKViewDelegate {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private var pipelineState: MTLRenderPipelineState?
@@ -17,6 +17,10 @@ class MetalRenderer: NSObject, MTKViewDelegate {
 
     private var lastUpdateTime: CFTimeInterval = 0
     private var sphereConfigs: [SphereConfig] = []
+
+    /// The most recently rendered frame texture.
+    public private(set) var currentTexture: MTLTexture?
+    private var offscreenTexture: MTLTexture?
 
     override init() {
         guard let device = MTLCreateSystemDefaultDevice(),
@@ -109,12 +113,12 @@ class MetalRenderer: NSObject, MTKViewDelegate {
 
     // MARK: - MTKViewDelegate
 
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         // Use view.bounds.size (in points) not drawable size (in pixels)
         animator?.updateViewBounds(view.bounds.size)
     }
 
-    func draw(in view: MTKView) {
+    public func draw(in view: MTKView) {
         // Update view bounds every frame to ensure animator has correct boundaries
         animator?.updateViewBounds(view.bounds.size)
 
@@ -126,38 +130,46 @@ class MetalRenderer: NSObject, MTKViewDelegate {
         // Update animation
         animator?.update(deltaTime: deltaTime)
 
-        // Get drawable and render pass descriptor
         guard let drawable = view.currentDrawable,
-              let renderPassDescriptor = view.currentRenderPassDescriptor,
               let pipelineState = pipelineState,
               let animator = animator else {
             return
         }
 
+        let drawableSize = view.drawableSize
+        let viewSize = view.bounds.size
+
+        // Ensure offscreen texture matches drawable size
+        updateOffscreenTexture(width: Int(drawableSize.width), height: Int(drawableSize.height))
+        guard let offscreen = offscreenTexture else { return }
+
+        // Create render pass for offscreen texture
+        let offscreenPassDescriptor = MTLRenderPassDescriptor()
+        offscreenPassDescriptor.colorAttachments[0].texture = offscreen
+        offscreenPassDescriptor.colorAttachments[0].loadAction = .clear
+        offscreenPassDescriptor.colorAttachments[0].storeAction = .store
+        offscreenPassDescriptor.colorAttachments[0].clearColor = view.clearColor
+
         // Create command buffer
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
+              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: offscreenPassDescriptor) else {
             return
         }
 
         renderEncoder.setRenderPipelineState(pipelineState)
 
-        let viewSize = view.bounds.size
-
         // Draw each sphere separately
         for sphereState in animator.spheres {
             guard let geometry = sphereGeometries[sphereState.config.radius] else {
-                continue  // Skip if geometry not found
+                continue
             }
 
-            // Setup per-sphere vertex uniforms
             var vertexUniforms = createVertexUniforms(
                 viewSize: viewSize,
                 spherePosition: sphereState.position,
                 sphereRadius: sphereState.config.radius
             )
 
-            // Setup per-sphere fragment uniforms (with colors, time, and glow)
             let colors = sphereState.config.colors.map { $0.color }
             var fragmentUniforms = createFragmentUniforms(
                 colors: colors,
@@ -166,12 +178,10 @@ class MetalRenderer: NSObject, MTKViewDelegate {
                 glowIntensity: sphereState.config.glowIntensity
             )
 
-            // Set buffers for this sphere
             renderEncoder.setVertexBuffer(geometry.vertexBuffer, offset: 0, index: 0)
             renderEncoder.setVertexBytes(&vertexUniforms, length: MemoryLayout<VertexUniforms>.stride, index: 1)
             renderEncoder.setFragmentBytes(&fragmentUniforms, length: MemoryLayout<FragmentUniforms>.stride, index: 0)
 
-            // Draw this sphere
             renderEncoder.drawIndexedPrimitives(
                 type: .triangle,
                 indexCount: geometry.indexCount,
@@ -182,8 +192,45 @@ class MetalRenderer: NSObject, MTKViewDelegate {
         }
 
         renderEncoder.endEncoding()
+
+        // Blit offscreen texture to drawable for on-screen display
+        if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
+            blitEncoder.copy(from: offscreen,
+                           sourceSlice: 0,
+                           sourceLevel: 0,
+                           sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                           sourceSize: MTLSize(width: offscreen.width, height: offscreen.height, depth: 1),
+                           to: drawable.texture,
+                           destinationSlice: 0,
+                           destinationLevel: 0,
+                           destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+            blitEncoder.endEncoding()
+        }
+
+        // Expose the offscreen texture for external consumers
+        self.currentTexture = offscreen
+
         commandBuffer.present(drawable)
         commandBuffer.commit()
+    }
+
+    private func updateOffscreenTexture(width: Int, height: Int) {
+        if let existing = offscreenTexture,
+           existing.width == width,
+           existing.height == height {
+            return
+        }
+
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: width,
+            height: height,
+            mipmapped: false
+        )
+        descriptor.usage = [.renderTarget, .shaderRead]
+        descriptor.storageMode = .private
+
+        offscreenTexture = device.makeTexture(descriptor: descriptor)
     }
 
     // MARK: - Helper Methods

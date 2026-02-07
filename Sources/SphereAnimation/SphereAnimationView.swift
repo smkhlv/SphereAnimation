@@ -2,23 +2,29 @@ import SwiftUI
 
 public struct SphereAnimationView: View {
     private let sphereConfigs: [SphereConfig]
+    @Binding private var renderer: MetalRenderer?
 
     // MARK: - Initializers
 
     /// Primary initializer: Multiple spheres with custom configurations
-    public init(spheres: [SphereConfig]) {
-        // Ensure at least one sphere
+    /// - Parameters:
+    ///   - spheres: Array of sphere configurations
+    ///   - renderer: Optional binding to receive the MetalRenderer instance.
+    ///              Use `renderer?.currentTexture` to access the rendered frame.
+    public init(spheres: [SphereConfig], renderer: Binding<MetalRenderer?> = .constant(nil)) {
         self.sphereConfigs = spheres.isEmpty ? [.default] : spheres
+        self._renderer = renderer
     }
 
     /// Backward compatible: Single sphere from color array
-    public init(colors: [Color]) {
+    public init(colors: [Color], renderer: Binding<MetalRenderer?> = .constant(nil)) {
         let colors = colors.isEmpty ? [.blue] : colors
         self.sphereConfigs = [SphereConfig(colors: colors)]
+        self._renderer = renderer
     }
 
     /// Convenience: Generate random spheres with varied properties
-    public init(randomSpheres count: Int, colors: [Color]) {
+    public init(randomSpheres count: Int, colors: [Color], renderer: Binding<MetalRenderer?> = .constant(nil)) {
         let actualCount = max(1, min(count, 10)) // Clamp to 1-10
         let colors = colors.isEmpty ? [.blue, .purple] : colors
 
@@ -37,6 +43,7 @@ public struct SphereAnimationView: View {
                 elasticity: 0.8
             )
         }
+        self._renderer = renderer
     }
 
     // MARK: - Body
@@ -44,13 +51,8 @@ public struct SphereAnimationView: View {
     public var body: some View {
         ZStack {
             // Metal-rendered animated spheres
-            MetalViewRepresentable(sphereConfigs: sphereConfigs)
+            MetalViewRepresentable(sphereConfigs: sphereConfigs, renderer: $renderer)
                 .ignoresSafeArea()
-
-            // Light blur overlay
-//            Rectangle()
-//                .fill(.ultraThinMaterial)
-//                .ignoresSafeArea()
         }
     }
 }
