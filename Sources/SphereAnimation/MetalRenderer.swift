@@ -207,11 +207,12 @@ public class MetalRenderer: NSObject, MTKViewDelegate {
             blitEncoder.endEncoding()
         }
 
-        // Expose the offscreen texture for external consumers
-        self.currentTexture = offscreen
-
         commandBuffer.present(drawable)
         commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        // Expose only after GPU finished rendering
+        self.currentTexture = offscreen
     }
 
     private func updateOffscreenTexture(width: Int, height: Int) {
