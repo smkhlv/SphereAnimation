@@ -2,29 +2,39 @@ import SwiftUI
 
 public struct SphereAnimationView: View {
     private let sphereConfigs: [SphereConfig]
-    @Binding private var renderer: MetalRenderer?
+    private let onFrame: @Sendable (SphereRenderedFrame) -> Void
 
     // MARK: - Initializers
 
     /// Primary initializer: Multiple spheres with custom configurations
     /// - Parameters:
     ///   - spheres: Array of sphere configurations
-    ///   - renderer: Optional binding to receive the MetalRenderer instance.
-    ///              Use `renderer?.currentTexture` to access the rendered frame.
-    public init(spheres: [SphereConfig], renderer: Binding<MetalRenderer?> = .constant(nil)) {
+    ///   - onFrame: Receives a GPU-synchronized texture lease. Release each frame
+    ///              after its final GPU consumer has completed its work.
+    public init(
+        spheres: [SphereConfig],
+        onFrame: @escaping @Sendable (SphereRenderedFrame) -> Void = { $0.release() }
+    ) {
         self.sphereConfigs = spheres.isEmpty ? [.default] : spheres
-        self._renderer = renderer
+        self.onFrame = onFrame
     }
 
     /// Backward compatible: Single sphere from color array
-    public init(colors: [Color], renderer: Binding<MetalRenderer?> = .constant(nil)) {
+    public init(
+        colors: [Color],
+        onFrame: @escaping @Sendable (SphereRenderedFrame) -> Void = { $0.release() }
+    ) {
         let colors = colors.isEmpty ? [.blue] : colors
         self.sphereConfigs = [SphereConfig(colors: colors)]
-        self._renderer = renderer
+        self.onFrame = onFrame
     }
 
     /// Convenience: Generate random spheres with varied properties
-    public init(randomSpheres count: Int, colors: [Color], renderer: Binding<MetalRenderer?> = .constant(nil)) {
+    public init(
+        randomSpheres count: Int,
+        colors: [Color],
+        onFrame: @escaping @Sendable (SphereRenderedFrame) -> Void = { $0.release() }
+    ) {
         let actualCount = max(1, min(count, 10)) // Clamp to 1-10
         let colors = colors.isEmpty ? [.blue, .purple] : colors
 
@@ -43,7 +53,7 @@ public struct SphereAnimationView: View {
                 elasticity: 0.8
             )
         }
-        self._renderer = renderer
+        self.onFrame = onFrame
     }
 
     // MARK: - Body
@@ -51,7 +61,7 @@ public struct SphereAnimationView: View {
     public var body: some View {
         ZStack {
             // Metal-rendered animated spheres
-            MetalViewRepresentable(sphereConfigs: sphereConfigs, renderer: $renderer)
+            MetalViewRepresentable(sphereConfigs: sphereConfigs, onFrame: onFrame)
                 .ignoresSafeArea()
         }
     }

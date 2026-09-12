@@ -1,12 +1,12 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 
 import PackageDescription
 
 let package = Package(
     name: "SphereAnimation",
     platforms: [
-        .iOS(.v15),
-        .macOS(.v12)
+        .iOS(.v18),
+        .macOS(.v15)
     ],
     products: [
         .library(
@@ -30,6 +30,10 @@ let package = Package(
                 .process("Resources/Shaders.metal"),
                 .copy("Resources/ShaderTypes.h")
             ]
+        ),
+        .testTarget(
+            name: "SphereAnimationTests",
+            dependencies: ["SphereAnimation"]
         ),
     ]
 )

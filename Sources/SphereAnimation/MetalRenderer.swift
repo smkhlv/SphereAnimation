@@ -8,28 +8,33 @@ import UIKit
 import AppKit
 #endif
 
-public class MetalRenderer: NSObject, MTKViewDelegate {
+@MainActor
+public final class MetalRenderer: NSObject, MTKViewDelegate {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private var pipelineState: MTLRenderPipelineState?
     private var sphereGeometries: [Float: SphereGeometry] = [:]  // Cache geometries by radius
     private var animator: MetalAnimationCoordinator?
+    private let texturePool: SphereTexturePool
+    private let readinessEvent: MTLSharedEvent
+    private let onFrame: @Sendable (SphereRenderedFrame) -> Void
+    private var nextReadinessValue: UInt64 = 0
 
     private var lastUpdateTime: CFTimeInterval = 0
     private var sphereConfigs: [SphereConfig] = []
 
-    /// The most recently rendered frame texture.
-    public private(set) var currentTexture: MTLTexture?
-    private var offscreenTexture: MTLTexture?
-
-    override init() {
+    init(onFrame: @escaping @Sendable (SphereRenderedFrame) -> Void = { $0.release() }) {
         guard let device = MTLCreateSystemDefaultDevice(),
-              let commandQueue = device.makeCommandQueue() else {
+              let commandQueue = device.makeCommandQueue(),
+              let readinessEvent = device.makeSharedEvent() else {
             fatalError("Metal is not supported on this device")
         }
 
         self.device = device
         self.commandQueue = commandQueue
+        self.texturePool = SphereTexturePool(device: device)
+        self.readinessEvent = readinessEvent
+        self.onFrame = onFrame
         super.init()
     }
 
@@ -139,13 +144,15 @@ public class MetalRenderer: NSObject, MTKViewDelegate {
         let drawableSize = view.drawableSize
         let viewSize = view.bounds.size
 
-        // Ensure offscreen texture matches drawable size
-        updateOffscreenTexture(width: Int(drawableSize.width), height: Int(drawableSize.height))
-        guard let offscreen = offscreenTexture else { return }
+        guard let textureLease = texturePool.tryAcquire(
+            width: Int(drawableSize.width),
+            height: Int(drawableSize.height)
+        ) else { return }
+        let renderedTexture = textureLease.texture
 
         // Create render pass for offscreen texture
         let offscreenPassDescriptor = MTLRenderPassDescriptor()
-        offscreenPassDescriptor.colorAttachments[0].texture = offscreen
+        offscreenPassDescriptor.colorAttachments[0].texture = renderedTexture
         offscreenPassDescriptor.colorAttachments[0].loadAction = .clear
         offscreenPassDescriptor.colorAttachments[0].storeAction = .store
         offscreenPassDescriptor.colorAttachments[0].clearColor = view.clearColor
@@ -153,6 +160,7 @@ public class MetalRenderer: NSObject, MTKViewDelegate {
         // Create command buffer
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
               let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: offscreenPassDescriptor) else {
+            textureLease.release()
             return
         }
 
@@ -194,44 +202,34 @@ public class MetalRenderer: NSObject, MTKViewDelegate {
         renderEncoder.endEncoding()
 
         // Blit offscreen texture to drawable for on-screen display
-        if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
-            blitEncoder.copy(from: offscreen,
-                           sourceSlice: 0,
-                           sourceLevel: 0,
-                           sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                           sourceSize: MTLSize(width: offscreen.width, height: offscreen.height, depth: 1),
-                           to: drawable.texture,
-                           destinationSlice: 0,
-                           destinationLevel: 0,
-                           destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
-            blitEncoder.endEncoding()
+        guard let blitEncoder = commandBuffer.makeBlitCommandEncoder() else {
+            textureLease.release()
+            return
         }
+        blitEncoder.copy(from: renderedTexture,
+                         sourceSlice: 0,
+                         sourceLevel: 0,
+                         sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                         sourceSize: MTLSize(width: renderedTexture.width, height: renderedTexture.height, depth: 1),
+                         to: drawable.texture,
+                         destinationSlice: 0,
+                         destinationLevel: 0,
+                         destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blitEncoder.endEncoding()
+
+        nextReadinessValue &+= 1
+        let readinessValue = nextReadinessValue
+        commandBuffer.encodeSignalEvent(readinessEvent, value: readinessValue)
 
         commandBuffer.present(drawable)
         commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
 
-        // Expose only after GPU finished rendering
-        self.currentTexture = offscreen
-    }
-
-    private func updateOffscreenTexture(width: Int, height: Int) {
-        if let existing = offscreenTexture,
-           existing.width == width,
-           existing.height == height {
-            return
-        }
-
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
-            width: width,
-            height: height,
-            mipmapped: false
-        )
-        descriptor.usage = [.renderTarget, .shaderRead]
-        descriptor.storageMode = .private
-
-        offscreenTexture = device.makeTexture(descriptor: descriptor)
+        onFrame(SphereRenderedFrame(
+            texture: renderedTexture,
+            readinessEvent: readinessEvent,
+            readinessValue: readinessValue,
+            onRelease: { textureLease.release() }
+        ))
     }
 
     // MARK: - Helper Methods

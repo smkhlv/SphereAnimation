@@ -6,7 +6,7 @@ import UIKit
 
 struct MetalViewRepresentable: UIViewRepresentable {
     let sphereConfigs: [SphereConfig]
-    @Binding var renderer: MetalRenderer?
+    let onFrame: @Sendable (SphereRenderedFrame) -> Void
 
     func makeUIView(context: Context) -> MTKView {
         let mtkView = MTKView()
@@ -14,9 +14,6 @@ struct MetalViewRepresentable: UIViewRepresentable {
         mtkView.preferredFramesPerSecond = 60
         mtkView.framebufferOnly = false
         context.coordinator.setup(mtkView: mtkView, sphereConfigs: sphereConfigs)
-        DispatchQueue.main.async {
-            renderer = context.coordinator
-        }
         return mtkView
     }
 
@@ -25,7 +22,7 @@ struct MetalViewRepresentable: UIViewRepresentable {
     }
 
     func makeCoordinator() -> MetalRenderer {
-        MetalRenderer()
+        MetalRenderer(onFrame: onFrame)
     }
 }
 
@@ -34,7 +31,7 @@ import AppKit
 
 struct MetalViewRepresentable: NSViewRepresentable {
     let sphereConfigs: [SphereConfig]
-    @Binding var renderer: MetalRenderer?
+    let onFrame: @Sendable (SphereRenderedFrame) -> Void
 
     func makeNSView(context: Context) -> MTKView {
         let mtkView = MTKView()
@@ -42,9 +39,6 @@ struct MetalViewRepresentable: NSViewRepresentable {
         mtkView.preferredFramesPerSecond = 60
         mtkView.framebufferOnly = false
         context.coordinator.setup(mtkView: mtkView, sphereConfigs: sphereConfigs)
-        DispatchQueue.main.async {
-            renderer = context.coordinator
-        }
         return mtkView
     }
 
@@ -53,7 +47,7 @@ struct MetalViewRepresentable: NSViewRepresentable {
     }
 
     func makeCoordinator() -> MetalRenderer {
-        MetalRenderer()
+        MetalRenderer(onFrame: onFrame)
     }
 }
 #endif
