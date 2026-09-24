@@ -4,6 +4,11 @@ A SwiftUI library for rendering animated 3D spheres using Metal. Features smooth
 
 Current stable version: **1.0.0**.
 
+The package is published independently at
+[`github.com/smkhlv/SphereAnimation`](https://github.com/smkhlv/SphereAnimation). It has
+no dependency on `DualKawaseBlur`; its optional Metal frame callback follows a generic
+producer contract that any compatible GPU consumer can use.
+
 <p align="center">
   <img src="Simulator%20Screen%20Recording%20-%20iPhone%2017%20-%202026-02-04%20at%2015.00.45.gif" width="300" alt="SphereAnimation Demo">
 </p>
@@ -107,6 +112,12 @@ SphereAnimationView(spheres: spheres) { frame in
 Copies of a frame share one lease, so `release()` is safe to call more than once.
 When `onFrame` is omitted, SphereAnimation releases frames automatically.
 
+The callback is intended for GPU-to-GPU handoff. The consumer must encode the shared-event
+wait before sampling `frame.texture`, and the producer owns the texture until the final
+consumer command buffer completes. If a consumer drops a frame, release its copy so the
+producer can recycle the texture. See the frame contract in the DualKawaseBlur package for
+an independent consumer implementation.
+
 ## Configuration Options
 
 ### SphereConfig
@@ -130,3 +141,7 @@ When `onFrame` is omitted, SphereAnimation releases frames automatically.
 ## License
 
 MIT License
+
+See the repository's release notes for API changes and the exact requirements for each
+tag. Performance depends on device, scene, and consumer pipeline; no universal timing
+claim is made here.
